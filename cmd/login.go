@@ -10,12 +10,15 @@ package cmd
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"syscall"
 
 	"github.com/docker/docker/api/types"
+	"github.com/qbits/devdrop/pkg/config"
 	"github.com/qbits/devdrop/pkg/docker"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -85,8 +88,43 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Login successful! %s\n", response.Status)
 	fmt.Printf("Logged in as: %s\n", username)
 
-	// TODO: Save username to ~/.devdrop/config.yaml for image naming
-	fmt.Println("Note: Configuration management will be implemented in a future step.")
+	// Create auth token for push operations
+	authToken, err := createAuthToken(username, password)
+	if err != nil {
+		return fmt.Errorf("failed to create auth token: %w", err)
+	}
+
+	// Save username and auth token to config
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	if err := cfg.SetUsername(username); err != nil {
+		return fmt.Errorf("failed to save username to config: %w", err)
+	}
+
+	if err := cfg.SetAuthToken(authToken); err != nil {
+		return fmt.Errorf("failed to save auth token to config: %w", err)
+	}
+
+	fmt.Println("Authentication credentials saved to DevDrop configuration.")
 
 	return nil
+}
+
+// createAuthToken creates a base64-encoded auth token for Docker registry operations
+func createAuthToken(username, password string) (string, error) {
+	authConfig := map[string]string{
+		"username":      username,
+		"password":      password,
+		"serveraddress": "https://index.docker.io/v1/",
+	}
+
+	authConfigJSON, err := json.Marshal(authConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal auth config: %w", err)
+	}
+
+	return base64.StdEncoding.EncodeToString(authConfigJSON), nil
 }

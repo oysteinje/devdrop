@@ -10,6 +10,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/qbits/devdrop/pkg/config"
 	"github.com/qbits/devdrop/pkg/docker"
 	"github.com/spf13/cobra"
 )
@@ -71,6 +72,16 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	if err := dockerClient.StartInteractiveContainer(containerID); err != nil {
 		return fmt.Errorf("failed to start interactive container: %w", err)
+	}
+
+	// Save container ID to config for later commit
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	if err := cfg.SetLastContainer(containerID); err != nil {
+		return fmt.Errorf("failed to save container ID to config: %w", err)
 	}
 
 	fmt.Println()
