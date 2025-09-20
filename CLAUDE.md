@@ -12,7 +12,7 @@ This is a Go project using standard Go toolchain:
 
 ```bash
 # Initialize Go module (if not already done)
-go mod init github.com/yourusername/devdrop
+go mod init github.com/oysteinje/devdrop
 
 # Install dependencies
 go mod tidy
@@ -196,15 +196,16 @@ environments:
 # 2. If not, pull it: docker pull username/devdrop-env:latest
 # 3. Run with current directory mounted:
 #    docker run -it -v $(pwd):/workspace -w /workspace username/devdrop-env:latest /bin/bash
+# 4. Save container ID for potential commit after session ends
 ```
 
 ### `devdrop commit`
 ```bash
 # What it does:
-# 1. Find the most recently exited devdrop container
+# 1. Find the most recently saved container (from init or run)
 # 2. Commit it: docker commit <container-id> username/devdrop-env:latest
 # 3. Push to DockerHub: docker push username/devdrop-env:latest
-# 4. Clean up old containers
+# 4. Clean up the committed container
 ```
 
 ### `devdrop pull`
@@ -234,3 +235,36 @@ When implementing features, follow this order:
 7. Configuration file management
 8. `devdrop pull` command
 9. Enhanced error handling and user experience
+
+## CI/CD and Release Process
+
+The project uses GitHub Actions for automated building and releases:
+
+### GitHub Workflow (`.github/workflows/release.yml`)
+- **Triggers**: Every push to `main` branch
+- **Testing**: Runs `go test`, `go vet`, and `go fmt` checks
+- **Building**: Cross-platform builds for Linux, macOS, Windows (both amd64 and arm64)
+- **Versioning**: Uses commit hash with `v0.1.0-{hash}` format
+- **Releases**: Automatically creates GitHub releases with binaries
+- **Repository**: `oysteinje/devdrop`
+
+### Installation Script (`install.sh`)
+- **Detection**: Auto-detects OS and architecture
+- **Download**: Fetches correct binary from GitHub releases
+- **Installation**: Installs to `/usr/local/bin` or custom directory
+- **Permissions**: Handles sudo requirements automatically
+- **Usage**: `curl -fsSL https://raw.githubusercontent.com/oysteinje/devdrop/main/install.sh | bash`
+
+### Version Management
+- Version information stored in `internal/version/version.go`
+- Set at build time via ldflags: `-X github.com/oysteinje/devdrop/internal/version.Version=${VERSION}`
+- Accessible via `devdrop --version` command
+
+### Release Assets
+Each release includes:
+- `devdrop-linux-amd64` - Linux x64 binary
+- `devdrop-linux-arm64` - Linux ARM64 binary
+- `devdrop-darwin-amd64` - macOS Intel binary
+- `devdrop-darwin-arm64` - macOS Apple Silicon binary
+- `devdrop-windows-amd64.exe` - Windows x64 binary
+- `checksums.txt` - SHA256 checksums for verification

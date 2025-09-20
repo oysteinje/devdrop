@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/qbits/devdrop/internal/version"
 	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "devdrop",
-	Short: "Personal development environment CLI",
+	Use:     "devdrop",
+	Short:   "Personal development environment CLI",
+	Version: version.GetVersion(),
 	Long: `DevDrop is a CLI tool that allows developers to create, customize,
 and share personal development environments using Docker containers.
 
