@@ -32,8 +32,8 @@ type Environment struct {
 }
 
 const (
-	configDir  = ".devdrop"
-	configFile = "config.yaml"
+	configDir        = ".devdrop"
+	configFile       = "config.yaml"
 	defaultBaseImage = "ubuntu:24.04"
 )
 
