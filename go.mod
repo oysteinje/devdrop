@@ -1,4 +1,4 @@
-module github.com/qbits/devdrop
+module github.com/oysteinje/devdrop
 
 go 1.18
 
