@@ -106,7 +106,7 @@ func runCommit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to update configuration: %w", err)
 	}
 
-	// Clean up the container (optional)
+	// Clean up the container
 	fmt.Printf("Cleaning up container %s...\n", cfg.LastContainer[:12])
 	if err := dockerClient.RemoveContainer(cfg.LastContainer); err != nil {
 		// Don't fail the whole operation if cleanup fails

@@ -27,9 +27,11 @@ This command will:
 2. Pull from DockerHub if needed (requires 'devdrop login')
 3. Start an interactive container with current directory mounted as /workspace
 4. Drop you into your customized shell environment
+5. Save the container for potential commit after session ends
 
 The current directory will be available as /workspace inside the container,
 and any changes you make to files will persist on your host system.
+Container changes can be committed with 'devdrop commit' after the session.
 
 Prerequisites:
 - You must have run 'devdrop login' and 'devdrop commit' first
@@ -38,7 +40,10 @@ Prerequisites:
 Example:
   cd ~/my-project
   devdrop run
-  # Inside container: your tools are available, /workspace contains project files`,
+  # Inside container: your tools are available, /workspace contains project files
+  # Install additional tools, make changes
+  exit
+  devdrop commit  # Save changes to your personal image`,
 	RunE: runRun,
 }
 
@@ -112,15 +117,18 @@ func runRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to start container: %w", err)
 	}
 
-	// Clean up container after exit
+	// Save container ID to config for potential commit
 	fmt.Println()
 	fmt.Println("Development session ended.")
-	fmt.Printf("Cleaning up container %s...\n", containerID[:12])
-	if err := dockerClient.RemoveContainer(containerID); err != nil {
-		fmt.Printf("Warning: failed to remove container: %v\n", err)
+	fmt.Printf("Container ID: %s\n", containerID)
+
+	if err := cfg.SetLastContainer(containerID); err != nil {
+		fmt.Printf("Warning: failed to save container ID to config: %v\n", err)
 	} else {
-		fmt.Println("Container cleaned up successfully!")
+		fmt.Println("Container saved for potential commit. Run 'devdrop commit' to save your changes.")
 	}
+
+	fmt.Println("Note: Container will remain available for commit. Run 'devdrop commit' to save changes and clean up.")
 
 	return nil
 }
