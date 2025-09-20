@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/qbits/devdrop/cmd"
+	"github.com/oysteinje/devdrop/cmd"
 )
 
 func main() {

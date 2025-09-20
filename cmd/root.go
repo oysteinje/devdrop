@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/qbits/devdrop/internal/version"
+	"github.com/oysteinje/devdrop/internal/version"
 	"github.com/spf13/cobra"
 )
 

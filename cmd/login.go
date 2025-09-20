@@ -18,8 +18,8 @@ import (
 	"syscall"
 
 	"github.com/docker/docker/api/types"
-	"github.com/qbits/devdrop/pkg/config"
-	"github.com/qbits/devdrop/pkg/docker"
+	"github.com/oysteinje/devdrop/pkg/config"
+	"github.com/oysteinje/devdrop/pkg/docker"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
