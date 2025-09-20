@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # DevDrop installer script
-# Usage: curl -fsSL https://raw.githubusercontent.com/qbits/devdrop/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/oysteinje/devdrop/main/install.sh | bash
 
 set -e
 
@@ -186,6 +186,7 @@ main() {
     echo -e "  ${YELLOW}devdrop init${NC}     # Create your development environment"
     echo -e "  ${YELLOW}devdrop commit${NC}   # Save your customizations"
     echo -e "  ${YELLOW}devdrop run${NC}      # Use your environment in any project"
+    echo -e "  ${YELLOW}devdrop pull${NC}     # Pull latest version of your environment"
     echo
     echo -e "Documentation: https://github.com/${REPO}"
 }
