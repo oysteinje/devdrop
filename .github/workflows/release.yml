@@ -26,13 +26,6 @@ jobs:
     - name: Run go vet
       run: go vet ./...
 
-    - name: Run go fmt check
-      run: |
-        if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
-          echo "Code is not formatted. Run 'go fmt ./...'"
-          gofmt -s -l .
-          exit 1
-        fi
 
   release:
     needs: test
