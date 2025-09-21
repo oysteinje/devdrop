@@ -45,7 +45,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 
 	if !cfg.HasEnvironments() {
 		fmt.Println("Status: No environments configured")
-		fmt.Println("Run 'devdrop init' to create your first environment")
+		fmt.Println("Run 'devdrop init' to create a new environment or 'devdrop pull' to use existing ones")
 		return nil
 	}
 
