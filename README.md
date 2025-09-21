@@ -6,12 +6,11 @@ DevDrop lets you create, customize, and share complete development environments.
 
 ## What it solves
 
-Setting up dev environments is tedious. DevDrop packages your tools, configs, and shell setup into a Docker image you can use on any machine.
+Setting up dev environments is tedious. DevDrop packages your tools, configs, and shell setup into a Docker image you can use on any machine. Install tools and dependencies in your environment without affecting your host system.
 
 ## Who it's for
 
 - Developers working across multiple machines
-- Teams wanting consistent environments
 - Anyone tired of environment setup
 
 ## How it works
