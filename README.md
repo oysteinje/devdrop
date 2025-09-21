@@ -42,7 +42,10 @@ devdrop run       # Use in any project
 ## Commands
 
 - `devdrop login` - Authenticate with DockerHub
-- `devdrop init` - Create new environment
+- `devdrop init` - Create new environment (choose from ubuntu, go, node, python, or custom)
 - `devdrop run` - Use environment in current directory
 - `devdrop commit` - Save changes
 - `devdrop pull` - Pull latest version
+- `devdrop ls` - List local and remote environments
+- `devdrop switch` - Change active environment
+- `devdrop status` - Show current environment info

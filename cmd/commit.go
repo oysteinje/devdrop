@@ -18,26 +18,30 @@ import (
 )
 
 var commitCmd = &cobra.Command{
-	Use:   "commit",
+	Use:   "commit [environment-name]",
 	Short: "Commit your customized environment to a personal image",
 	Long: `Commit your customized development environment to a personal Docker image
 and push it to DockerHub for later use.
 
 This command will:
-1. Find the container from your last 'devdrop init'
-2. Commit all your customizations to a new image
-3. Push the image to DockerHub as username/devdrop-env:latest
-4. Update your configuration with the new environment
+1. Use the current environment or the specified environment
+2. Find the most recent container for that environment
+3. Commit all your customizations to a new image
+4. Push the image to DockerHub as username/devdrop-envname:latest
+5. Update your configuration with the new environment
 
 Prerequisites:
 - You must have run 'devdrop login' to authenticate
-- You must have run 'devdrop init' and customized the environment
+- You must have a container from 'devdrop init' or 'devdrop run'
 
-Example:
+Examples:
+  devdrop commit              # Commit current environment
+  devdrop commit myenv        # Commit devdrop-myenv environment
   devdrop init
   # customize environment, install tools, etc.
   exit
-  devdrop commit`,
+  devdrop commit              # Save changes to current environment`,
+	Args: cobra.MaximumNArgs(1),
 	RunE: runCommit,
 }
 
@@ -62,9 +66,31 @@ func runCommit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("missing authentication token. Please run 'devdrop login' again")
 	}
 
-	// Check if there's a container to commit
-	if cfg.LastContainer == "" {
-		return fmt.Errorf("no container to commit. Run 'devdrop init' first to create an environment")
+	// Determine which environment to commit
+	var targetEnv string
+	if len(args) == 0 {
+		// Use current environment
+		if !cfg.HasEnvironments() {
+			return fmt.Errorf("no environments configured. Run 'devdrop init' to create one")
+		}
+		targetEnv = cfg.GetCurrentEnvironment()
+		if targetEnv == "" {
+			return fmt.Errorf("no current environment set. Run 'devdrop switch' to select one")
+		}
+	} else {
+		targetEnv = config.EnsureDevDropPrefix(args[0])
+	}
+
+	// Check if environment exists
+	env, exists := cfg.Environments[targetEnv]
+	if !exists {
+		return fmt.Errorf("environment '%s' not found. Run 'devdrop ls' to see available environments", targetEnv)
+	}
+
+	// Check if there's a container to commit for this environment
+	containerID := env.LastContainer
+	if containerID == "" {
+		return fmt.Errorf("no container to commit for environment '%s'. Run 'devdrop init' or 'devdrop run' first", targetEnv)
 	}
 
 	// Create Docker client
@@ -74,13 +100,15 @@ func runCommit(cmd *cobra.Command, args []string) error {
 	}
 	defer dockerClient.Close()
 
-	// Generate personal image name
-	imageName := cfg.GetPersonalImageName()
+	// Generate environment image name
+	imageName := cfg.GetEnvironmentImageName(targetEnv)
 
-	fmt.Printf("Committing container %s to image %s...\n", cfg.LastContainer[:12], imageName)
+	fmt.Printf("Committing environment: %s\n", targetEnv)
+	fmt.Printf("Container: %s\n", containerID[:12])
+	fmt.Printf("Image: %s\n", imageName)
 
 	// Commit container to image
-	if err := dockerClient.CommitContainer(cfg.LastContainer, imageName); err != nil {
+	if err := dockerClient.CommitContainer(containerID, imageName); err != nil {
 		return fmt.Errorf("failed to commit container: %w", err)
 	}
 
@@ -95,35 +123,26 @@ func runCommit(cmd *cobra.Command, args []string) error {
 	fmt.Println("Image pushed successfully!")
 
 	// Update environment in configuration
-	env := config.Environment{
-		Image:       imageName,
-		Created:     time.Now(),
-		LastUpdated: time.Now(),
-		Description: "DevDrop environment created from ubuntu:24.04",
-	}
+	env.Image = imageName
+	env.LastUpdated = time.Now()
+	env.LastContainer = "" // Clear since we're cleaning up the container
 
-	if err := cfg.AddEnvironment("default", env); err != nil {
+	if err := cfg.AddEnvironment(targetEnv, env); err != nil {
 		return fmt.Errorf("failed to update configuration: %w", err)
 	}
 
 	// Clean up the container
-	fmt.Printf("Cleaning up container %s...\n", cfg.LastContainer[:12])
-	if err := dockerClient.RemoveContainer(cfg.LastContainer); err != nil {
+	fmt.Printf("Cleaning up container %s...\n", containerID[:12])
+	if err := dockerClient.RemoveContainer(containerID); err != nil {
 		// Don't fail the whole operation if cleanup fails
 		fmt.Printf("Warning: failed to remove container: %v\n", err)
 	} else {
 		fmt.Println("Container cleaned up successfully!")
 	}
 
-	// Clear the last container ID since it's been committed and removed
-	cfg.LastContainer = ""
-	if err := cfg.Save(); err != nil {
-		fmt.Printf("Warning: failed to clear container ID from config: %v\n", err)
-	}
-
 	fmt.Println()
-	fmt.Printf("✅ Environment successfully committed and pushed as %s\n", imageName)
-	fmt.Println("You can now run 'devdrop run' to use your customized environment in any project!")
+	fmt.Printf("✅ Environment '%s' successfully committed and pushed as %s\n", targetEnv, imageName)
+	fmt.Printf("You can now run 'devdrop run %s' to use your customized environment in any project!\n", targetEnv)
 
 	return nil
 }
