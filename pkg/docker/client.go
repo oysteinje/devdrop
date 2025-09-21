@@ -243,6 +243,12 @@ func (c *Client) ListDevDropRepositories(username string) ([]string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, fmt.Errorf("user '%s' not found on Docker Hub. Check your username in 'devdrop login'", username)
+		}
+		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+			return nil, fmt.Errorf("access denied. The user '%s' may have no public repositories or they may be private", username)
+		}
 		return nil, fmt.Errorf("Docker Hub API returned status %d", resp.StatusCode)
 	}
 

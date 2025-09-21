@@ -15,7 +15,7 @@ Setting up dev environments is tedious. DevDrop packages your tools, configs, an
 
 ## How it works
 
-1. `devdrop init` - Start with Ubuntu
+1. `devdrop init` - Start from a a selection of base images
 2. Install tools, configure shell
 3. `devdrop commit` - Save to DockerHub
 4. `devdrop run` - Use anywhere

@@ -64,10 +64,7 @@ func runPull(cmd *cobra.Command, args []string) error {
 
 	// Determine which environment to pull
 	if len(args) == 0 {
-		// Interactive selection
-		if !cfg.HasEnvironments() {
-			return fmt.Errorf("no environments configured. Run 'devdrop init' to create one")
-		}
+		// Interactive selection - check both local and remote
 		targetEnv, err = promptForEnvironmentToPull(cfg)
 		if err != nil {
 			return err
@@ -184,7 +181,11 @@ func promptForEnvironmentToPull(cfg *config.Config) (string, error) {
 
 	remoteEnvs, err := dockerClient.ListDevDropRepositories(cfg.Username)
 	if err != nil {
-		// Fallback to local only if Docker Hub API fails
+		// If we have no local envs and can't get remote, that's a problem
+		if len(localEnvs) == 0 {
+			return "", fmt.Errorf("could not fetch remote environments (%v) and no local environments found. Run 'devdrop login' to authenticate, then try again", err)
+		}
+		// Fallback to local only if Docker Hub API fails but we have local envs
 		fmt.Printf("Warning: Could not fetch remote environments (%v), showing local environments only\n", err)
 		return promptForLocalEnvironmentToPull(cfg, localEnvs)
 	}
@@ -210,7 +211,7 @@ func promptForEnvironmentToPull(cfg *config.Config) (string, error) {
 	}
 
 	if len(envList) == 0 {
-		return "", fmt.Errorf("no environments found. Run 'devdrop init' to create one")
+		return "", fmt.Errorf("no environments found on DockerHub. Run 'devdrop init' to create your first environment")
 	}
 
 	fmt.Println("Available environments:")
