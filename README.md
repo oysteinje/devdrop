@@ -2,7 +2,7 @@
 
 > Portable development environments using Docker
 
-DevDrop lets you create, customize, and share complete development environments. Think "dotfiles for entire environments" – install your tools once, use them anywhere.
+DevDrop lets you create and customize complete development environments. Think "dotfiles for entire environments" – install your tools once, use them anywhere.
 
 ## What it solves
 
