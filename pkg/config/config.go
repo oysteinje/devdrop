@@ -11,24 +11,28 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	Username      string                 `yaml:"username"`
-	BaseImage     string                 `yaml:"base_image"`
-	LastContainer string                 `yaml:"last_container,omitempty"`
-	AuthToken     string                 `yaml:"auth_token,omitempty"`
-	Environments  map[string]Environment `yaml:"environments"`
+	Username           string                 `yaml:"username"`
+	BaseImage          string                 `yaml:"base_image"`
+	LastContainer      string                 `yaml:"last_container,omitempty"`
+	AuthToken          string                 `yaml:"auth_token,omitempty"`
+	CurrentEnvironment string                 `yaml:"current_environment,omitempty"`
+	Environments       map[string]Environment `yaml:"environments"`
 }
 
 type Environment struct {
-	Image       string    `yaml:"image"`
-	Created     time.Time `yaml:"created"`
-	LastUpdated time.Time `yaml:"last_updated"`
-	Description string    `yaml:"description,omitempty"`
+	Image         string    `yaml:"image"`
+	BaseImage     string    `yaml:"base_image"`
+	Created       time.Time `yaml:"created"`
+	LastUpdated   time.Time `yaml:"last_updated"`
+	Description   string    `yaml:"description,omitempty"`
+	LastContainer string    `yaml:"last_container,omitempty"`
 }
 
 const (
@@ -133,4 +137,71 @@ func (c *Config) GetPersonalImageName() string {
 func (c *Config) AddEnvironment(name string, env Environment) error {
 	c.Environments[name] = env
 	return c.Save()
+}
+
+// EnsureDevDropPrefix ensures the environment name has the devdrop- prefix
+func EnsureDevDropPrefix(envName string) string {
+	if envName == "" {
+		return "devdrop-default"
+	}
+	if !strings.HasPrefix(envName, "devdrop-") {
+		return "devdrop-" + envName
+	}
+	return envName
+}
+
+// SetEnvironmentContainer updates the last container ID for a specific environment
+func (c *Config) SetEnvironmentContainer(envName, containerID string) error {
+	envName = EnsureDevDropPrefix(envName)
+	env, exists := c.Environments[envName]
+	if !exists {
+		env = Environment{}
+	}
+	env.LastContainer = containerID
+	env.LastUpdated = time.Now()
+	c.Environments[envName] = env
+	return c.Save()
+}
+
+// GetEnvironmentImageName returns the image name for a specific environment
+func (c *Config) GetEnvironmentImageName(envName string) string {
+	if c.Username == "" {
+		return ""
+	}
+	envName = EnsureDevDropPrefix(envName)
+	return fmt.Sprintf("%s/%s:latest", c.Username, envName)
+}
+
+// SetCurrentEnvironment sets the active environment
+func (c *Config) SetCurrentEnvironment(envName string) error {
+	envName = EnsureDevDropPrefix(envName)
+	c.CurrentEnvironment = envName
+	return c.Save()
+}
+
+// GetCurrentEnvironment returns the current environment, with fallback logic
+func (c *Config) GetCurrentEnvironment() string {
+	// If current environment is set and exists, use it
+	if c.CurrentEnvironment != "" {
+		if _, exists := c.Environments[c.CurrentEnvironment]; exists {
+			return c.CurrentEnvironment
+		}
+	}
+
+	// Fallback: use the most recently updated environment
+	var latestEnv string
+	var latestTime time.Time
+	for name, env := range c.Environments {
+		if env.LastUpdated.After(latestTime) {
+			latestTime = env.LastUpdated
+			latestEnv = name
+		}
+	}
+
+	return latestEnv
+}
+
+// HasEnvironments returns true if any environments are configured
+func (c *Config) HasEnvironments() bool {
+	return len(c.Environments) > 0
 }
