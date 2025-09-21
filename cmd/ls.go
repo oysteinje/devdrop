@@ -85,7 +85,7 @@ func runLs(cmd *cobra.Command, args []string) error {
 		defer dockerClient.Close()
 
 		fmt.Println("Remote Environments (DockerHub):")
-		remoteImages, err := listRemoteDevDropImages(dockerClient, cfg.Username)
+		remoteImages, err := dockerClient.ListDevDropRepositories(cfg.Username)
 		if err != nil {
 			fmt.Printf("  Error fetching remote images: %v\n", err)
 		} else if len(remoteImages) == 0 {
@@ -106,15 +106,4 @@ func runLs(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-func listRemoteDevDropImages(dockerClient *docker.Client, username string) ([]string, error) {
-	// For now, we'll use a simple approach that tries to list repositories
-	// In a full implementation, you'd use Docker Hub API or registry API
-	// This is a placeholder that shows the structure
-
-	// TODO: Implement actual Docker Hub registry API call
-	// For now, return mock data or implement basic registry listing
-
-	return []string{}, fmt.Errorf("Docker Hub API integration not yet implemented")
 }

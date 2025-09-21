@@ -107,13 +107,21 @@ Image name: %s`, targetEnv, targetEnv, imageName)
 		return fmt.Errorf("failed to pull environment image: %w", err)
 	}
 
-	// Update environment in config if it exists
-	if env, exists := cfg.Environments[targetEnv]; exists {
-		env.Image = imageName
-		env.LastUpdated = time.Now()
-		cfg.Environments[targetEnv] = env
-		cfg.Save()
+	// Update or create environment in config
+	env, exists := cfg.Environments[targetEnv]
+	if !exists {
+		// Create new environment entry for remote-only environments
+		env = config.Environment{
+			BaseImage:   imageName, // We don't know the original base image, so use the pulled image
+			Created:     time.Now(),
+			Description: fmt.Sprintf("Environment pulled from DockerHub (%s)", imageName),
+		}
 	}
+
+	env.Image = imageName
+	env.LastUpdated = time.Now()
+	cfg.Environments[targetEnv] = env
+	cfg.Save()
 
 	fmt.Println("✅ Environment pulled successfully!")
 	fmt.Printf("Environment: %s\n", targetEnv)
@@ -159,12 +167,111 @@ func indexOfSubstring(s, substr string) int {
 func promptForEnvironmentToPull(cfg *config.Config) (string, error) {
 	reader := bufio.NewReader(os.Stdin)
 
-	fmt.Println("Available environments:")
-	envNames := make([]string, 0, len(cfg.Environments))
+	// Get local environments
+	localEnvs := make([]string, 0, len(cfg.Environments))
 	for name := range cfg.Environments {
-		envNames = append(envNames, name)
+		localEnvs = append(localEnvs, name)
 	}
 
+	// Get remote environments
+	dockerClient, err := docker.NewClient()
+	if err != nil {
+		// Fallback to local only if Docker connection fails
+		fmt.Println("Warning: Could not connect to Docker, showing local environments only")
+		return promptForLocalEnvironmentToPull(cfg, localEnvs)
+	}
+	defer dockerClient.Close()
+
+	remoteEnvs, err := dockerClient.ListDevDropRepositories(cfg.Username)
+	if err != nil {
+		// Fallback to local only if Docker Hub API fails
+		fmt.Printf("Warning: Could not fetch remote environments (%v), showing local environments only\n", err)
+		return promptForLocalEnvironmentToPull(cfg, localEnvs)
+	}
+
+	// Combine and deduplicate environments
+	allEnvs := make(map[string]bool)
+	var envList []string
+
+	// Add local environments first
+	for _, env := range localEnvs {
+		if !allEnvs[env] {
+			envList = append(envList, env)
+			allEnvs[env] = true
+		}
+	}
+
+	// Add remote environments that aren't already local
+	for _, env := range remoteEnvs {
+		if !allEnvs[env] {
+			envList = append(envList, env)
+			allEnvs[env] = true
+		}
+	}
+
+	if len(envList) == 0 {
+		return "", fmt.Errorf("no environments found. Run 'devdrop init' to create one")
+	}
+
+	fmt.Println("Available environments:")
+	for i, name := range envList {
+		marker := " "
+		status := ""
+
+		if name == cfg.GetCurrentEnvironment() {
+			marker = "*"
+		}
+
+		// Show status: local, remote, or both
+		isLocal := false
+		isRemote := false
+		for _, local := range localEnvs {
+			if local == name {
+				isLocal = true
+				break
+			}
+		}
+		for _, remote := range remoteEnvs {
+			if remote == name {
+				isRemote = true
+				break
+			}
+		}
+
+		if isLocal && isRemote {
+			status = " (local + remote)"
+		} else if isLocal {
+			status = " (local only)"
+		} else if isRemote {
+			status = " (remote only)"
+		}
+
+		fmt.Printf("%d.%s %s%s\n", i+1, marker, name, status)
+	}
+
+	fmt.Print("Select environment to pull (1-" + fmt.Sprintf("%d", len(envList)) + "): ")
+	input, err := reader.ReadString('\n')
+	if err != nil {
+		return "", fmt.Errorf("failed to read selection: %w", err)
+	}
+
+	input = strings.TrimSpace(input)
+	choice, err := strconv.Atoi(input)
+	if err != nil || choice < 1 || choice > len(envList) {
+		return "", fmt.Errorf("invalid selection. Please choose 1-%d", len(envList))
+	}
+
+	return envList[choice-1], nil
+}
+
+func promptForLocalEnvironmentToPull(cfg *config.Config, envNames []string) (string, error) {
+	reader := bufio.NewReader(os.Stdin)
+
+	if len(envNames) == 0 {
+		return "", fmt.Errorf("no local environments found. Run 'devdrop init' to create one")
+	}
+
+	fmt.Println("Available local environments:")
 	for i, name := range envNames {
 		marker := " "
 		if name == cfg.GetCurrentEnvironment() {

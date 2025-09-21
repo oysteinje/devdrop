@@ -10,11 +10,14 @@ package docker
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -208,4 +211,57 @@ func (c *Client) RemoveContainer(containerID string) error {
 	}
 
 	return nil
+}
+
+// Docker Hub API structs
+type DockerHubRepository struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	IsPrivate   bool   `json:"is_private"`
+	LastUpdated string `json:"last_updated"`
+}
+
+type DockerHubRepositoriesResponse struct {
+	Count    int                   `json:"count"`
+	Next     string                `json:"next"`
+	Previous string                `json:"previous"`
+	Results  []DockerHubRepository `json:"results"`
+}
+
+// ListDevDropRepositories lists all devdrop-* repositories for a user on Docker Hub
+func (c *Client) ListDevDropRepositories(username string) ([]string, error) {
+	url := fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/?page_size=100", username)
+
+	httpClient := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	resp, err := httpClient.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query Docker Hub API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Docker Hub API returned status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	var hubResp DockerHubRepositoriesResponse
+	if err := json.Unmarshal(body, &hubResp); err != nil {
+		return nil, fmt.Errorf("failed to parse Docker Hub response: %w", err)
+	}
+
+	var devdropRepos []string
+	for _, repo := range hubResp.Results {
+		if strings.HasPrefix(repo.Name, "devdrop-") {
+			devdropRepos = append(devdropRepos, repo.Name)
+		}
+	}
+
+	return devdropRepos, nil
 }
