@@ -211,9 +211,11 @@ environments:
 ### `devdrop pull`
 ```bash
 # What it does:
-# 1. Pull latest personal image: docker pull username/devdrop-env:latest
-# 2. Update local image cache
-# 3. Display success message with image details
+# 1. Check authentication and personal image configuration
+# 2. Pull latest personal image: docker pull username/devdrop-env:latest
+# 3. Handle cases where personal image doesn't exist (provides helpful error message)
+# 4. Update local image cache
+# 5. Display success message with image details
 ```
 
 ## Development Prerequisites
